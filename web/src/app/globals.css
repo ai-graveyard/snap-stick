@@ -1,0 +1,224 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 语义色（对应 Palette.swift 的 dynamic 值）：白天 / 黑夜 */
+:root {
+  --surface: #ffffff;
+  --card: #ffffff;
+  --chip: #ededed;
+  --label: #3d3326;
+}
+.dark {
+  --surface: #141414;
+  --card: #2b2b2b;
+  --chip: #454545;
+  --label: #ebebeb;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  /* 页面整屏背景：白天纯白，黑夜近黑（克莱因蓝 + 暖纸主题，相机为视觉焦点） */
+  background: var(--surface);
+  color: var(--label);
+  /* 移动端体验：禁止下拉刷新/橡皮筋滚动，避免双击缩放 */
+  overscroll-behavior: none;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  overflow: hidden;
+}
+
+/* 安全区适配（刘海屏/底部小白条） */
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* ---------- 拍立得相纸 ---------- */
+.polaroid-frame {
+  background: linear-gradient(160deg, #fdfcf8 0%, #f3ede1 100%);
+  padding: 5% 5% 8% 5%;
+  border-radius: 4px;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.6) inset,
+    0 18px 30px -12px rgba(0, 0, 0, 0.55),
+    0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.polaroid-window {
+  background: #15110d;
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6);
+}
+
+/* 显影前的"空白药膜"质感 */
+.emulsion {
+  background:
+    radial-gradient(80% 60% at 50% 40%, #3a352e 0%, #211d18 70%, #15110d 100%);
+}
+
+/* 扫描显影线 */
+.scanline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 16%;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(255, 250, 235, 0.12),
+    transparent
+  );
+  animation: scanline 2.4s ease-in-out infinite;
+}
+
+@keyframes scanline {
+  0% {
+    top: -16%;
+  }
+  100% {
+    top: 100%;
+  }
+}
+
+/* 相机出纸口阴影（相纸刚吐出时口部的暗影） */
+.slot-shadow {
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.45),
+    rgba(0, 0, 0, 0) 70%
+  );
+}
+
+/* ---------- 隐私政策静态页 ---------- */
+/* 全局 body 禁用了滚动与文本选择，这里在隐私页内重新放开，便于阅读 */
+.privacy-page {
+  height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: auto;
+  user-select: text;
+  -webkit-user-select: text;
+  padding: env(safe-area-inset-top) 20px calc(env(safe-area-inset-bottom) + 40px);
+}
+
+.privacy-content {
+  position: relative;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 48px 0 24px;
+  line-height: 1.75;
+  color: #ece6da;
+}
+
+/* 语言切换按钮，固定在内容右上角 */
+.privacy-lang-toggle {
+  position: absolute;
+  top: 48px;
+  right: 0;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #ece6da;
+  background: rgba(245, 240, 232, 0.08);
+  border: 1px solid rgba(245, 240, 232, 0.2);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.privacy-lang-toggle:hover {
+  background: rgba(245, 240, 232, 0.16);
+  border-color: rgba(245, 240, 232, 0.35);
+}
+
+.privacy-header {
+  margin-bottom: 32px;
+  border-bottom: 1px solid rgba(245, 240, 232, 0.12);
+  padding-bottom: 20px;
+}
+
+.privacy-header h1 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+  color: #fdfcf8;
+}
+
+.privacy-subtitle {
+  margin: 6px 0 0;
+  font-size: 15px;
+  color: #c8b89e;
+  letter-spacing: 0.02em;
+}
+
+.privacy-updated {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: #9a907f;
+}
+
+.privacy-content section {
+  margin-bottom: 28px;
+}
+
+.privacy-content h2 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #fdfcf8;
+  margin: 0 0 10px;
+}
+
+.privacy-content p {
+  margin: 0 0 12px;
+  font-size: 15px;
+}
+
+.privacy-content ul {
+  margin: 0 0 12px;
+  padding-left: 22px;
+}
+
+.privacy-content li {
+  margin-bottom: 8px;
+  font-size: 15px;
+}
+
+.privacy-content strong {
+  color: #fdfcf8;
+  font-weight: 600;
+}
+
+.privacy-content a {
+  color: #e8b25a;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.privacy-footer {
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(245, 240, 232, 0.12);
+}
+
+.privacy-footer a {
+  color: #c8b89e;
+  text-decoration: none;
+  font-size: 15px;
+}
+
+.privacy-footer a:hover {
+  color: #fdfcf8;
+}

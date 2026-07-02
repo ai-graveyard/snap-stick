@@ -1,0 +1,16 @@
+services:
+  web:
+    build:
+      context: .
+      args:
+        NODE_VERSION: "22"
+    image: pai-li-tie:latest
+    container_name: pai-li-tie
+    restart: unless-stopped
+    ports:
+      # 宿主机端口可用 HOST_PORT 覆盖（写在同目录 .env 里），容器内固定 3000
+      - "${HOST_PORT:-3000}:3000"
+    env_file:
+      - .env.local
+    environment:
+      - NODE_ENV=production

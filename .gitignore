@@ -1,0 +1,37 @@
+# macOS
+.DS_Store
+
+# ios/ (Xcode / SwiftUI)
+ios/*.xcuserstate
+ios/**/xcuserdata/
+ios/*.xccheckout
+ios/*.moved-aside
+ios/DerivedData/
+ios/build/
+ios/*.ipa
+ios/*.dSYM.zip
+ios/*.dSYM
+ios/.build/
+ios/.swiftpm/
+ios/Package.resolved
+ios/timeline.xctimeline
+ios/playground.xcworkspace/
+
+# web/ (Next.js)
+/web/node_modules
+/web/.pnp
+/web/.pnp.js
+/web/coverage
+/web/.next/
+/web/out/
+web/*.tsbuildinfo
+/web/next-env.d.ts
+/web/build
+/web/.env
+/web/.env.local
+/web/.env.development.local
+/web/.env.test.local
+/web/.env.production.local
+web/npm-debug.log*
+web/yarn-debug.log*
+web/yarn-error.log*
