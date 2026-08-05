@@ -9,6 +9,9 @@ Take a photo, let the on-device Vision foreground-mask API lift the subject, wra
 - On-device subject extraction with Vision foreground masks
 - On-device subject classification into 10 lifestyle categories, with manual override and history filtering
 - White die-cut sticker border rendered locally
+- Optional AI cartoon sticker mode (AI 卡通贴纸, bring-your-own Doubao key): seedream turns the shot into a fridge-magnet-style cartoon card before the local cutout, falling back to the fully local pipeline on any failure
+- Expanded square viewfinder (大取景): tap the camera lens for a full-screen framing view (~8× the visible preview area)
+- Hardware-aware camera zoom: 0.5×–3× presets plus pinch-to-zoom, on both the camera body and the expanded viewfinder; front/back camera flip
 - Rotate a shot by 90° / 180° / 270° after capture, from the print card or the sticker detail sheet
 - Shake-to-develop reveal (still phone ≈5s; shake to finish in ≈1s)
 - Gyroscope-driven sticker physics sandbox
