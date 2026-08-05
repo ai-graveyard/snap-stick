@@ -29,6 +29,8 @@ struct ContentView: View {
     /// 不摇晃时的显影等待 = 用户设定的总显影时间 − 揭晓动画时长（下限 0）。
     /// 总时间在 设置 里可调（3~8s，默认 5s）；摇一摇仍可跳过等待立即揭晓。
     private var developWait: Double { max(0, settings.developTime - developReveal) }
+    /// 显影完成后相纸的停留时长：超时自动向下收回机身（出片卡上的任何交互都会取消）
+    private let autoCollapseDelay = 3.0
 
     @State private var phase: StudioPhase = .idle
     @State private var photo: PhotoRecord?
@@ -41,6 +43,8 @@ struct ContentView: View {
     @State private var developShaken = false
     /// 显影等待计时任务（摇晃时取消，立即揭晓）
     @State private var developTask: Task<Void, Never>?
+    /// 出片后自动收起计时任务（显影完成停留 autoCollapseDelay 后相纸退回机身；交互时取消）
+    @State private var autoCollapseTask: Task<Void, Never>?
     @State private var freshId: UUID?
     @State private var pendingPhoto: PhotoRecord?
     /// 撕纸连拍：上一张成品正在脱离（落入沙盒）的过渡，期间锁快门并播放退场动画
@@ -56,6 +60,12 @@ struct ContentView: View {
     /// （命名为 Screen 以避开 SwiftUI 的 Tab 类型）
     enum Screen: Hashable { case calendar, home, profile }
     @State private var tab: Screen = .home
+
+    /// 大取景模式：点机身镜头后展开的整屏取景层（仅待机相位可展开）
+    @State private var viewfinderExpanded = false
+    /// 机身镜头是否渲染实时预览。展开期间与收起动画期间都把预览让给展开层，
+    /// 保证任何时刻只有一个 AVCaptureVideoPreviewLayer 挂在 session 上。
+    @State private var bodyPreviewLive = true
 
     @State private var sidebarOpen = false
     @State private var trashOpen = false
@@ -94,9 +104,12 @@ struct ContentView: View {
             && !paperSheetOpen && shareItem == nil && detailPhoto == nil
     }
 
-    /// 物理沙盒是否应运行：仅当停在主页且在前台。切到日历/设置 Tab 或进后台时
-    /// 停掉 CADisplayLink，避免在看不见沙盒时还满帧空转。
-    private var sandboxActive: Bool { scenePhase == .active && tab == .home }
+    /// 物理沙盒是否应运行：仅当停在主页、在前台、且没展开大取景。
+    /// 切到日历/设置 Tab、进后台、或大取景盖住整屏时都停掉 CADisplayLink，
+    /// 避免在看不见沙盒时还满帧空转（尤其大取景下相机预览正需要那份 GPU 带宽）。
+    private var sandboxActive: Bool {
+        scenePhase == .active && tab == .home && !viewfinderExpanded
+    }
 
     /// 贴纸 id → 展示图的查表，传给沙盒做 O(1) 取图（替代每帧逐贴纸的线性 first 查找）。
     /// 仅在本视图重算时重建（photos 变化等），不在每帧物理循环里。
@@ -141,6 +154,7 @@ struct ContentView: View {
                         hiddenIds: hiddenIds,
                         onPickPaper: handleDetailPickPaper,
                         onPickCategory: handleDetailPickCategory,
+                        onRotate: handleRotate,
                         onDownload: handleDownloadHistory,
                         onDelete: handleDeleteHistory,
                         onToggleVisibility: toggleVisibility,
@@ -155,6 +169,7 @@ struct ContentView: View {
                               selectedID: p.id,
                               onPickPaper: handleDetailPickPaper,
                               onPickCategory: handleDetailPickCategory,
+                              onRotate: handleRotate,
                               onDownload: handleDownloadHistory,
                               onDelete: handleDeleteHistory)
                 .environment(\.locale, locale)
@@ -221,7 +236,9 @@ struct ContentView: View {
                     animateReveal: animateReveal,
                     reveal: reveal,
                     ejectDuration: ejectDuration, developDuration: developReveal,
-                    session: AVCaptureSessionRef(session: camera.session),
+                    preview: CameraPreviewRef(host: camera.previewHost),
+                    zoomOptions: camera.zoomOptions,
+                    displayZoom: camera.displayZoom,
                     onBeforeShutter: { motion.start() },
                     onShutter: handleShutter,
                     onFlipCamera: {
@@ -229,6 +246,9 @@ struct ContentView: View {
                             showToast(front ? "已切换前置镜头" : "已切换后置镜头")
                         }
                     },
+                    onSelectZoom: { camera.selectZoom($0) },
+                    onPinchBegin: { camera.beginPinch() },
+                    onPinchChange: { camera.updatePinch($0) },
                     onRetake: handleRetake,
                     onDelete: { if photo != nil { deleteStudioConfirm = true } },
                     onDownload: handleDownload,
@@ -242,7 +262,11 @@ struct ContentView: View {
                             detailList = store.photos.sorted { $0.timestamp > $1.timestamp }
                             detailPhoto = photo
                         }
-                    }
+                    },
+                    onRotate: handleStudioRotate,
+                    onCardInteraction: cancelAutoCollapse,
+                    previewLive: bodyPreviewLive,
+                    onExpandViewfinder: expandViewfinder
                 )
             }
 
@@ -255,6 +279,32 @@ struct ContentView: View {
                 .animation(.easeInOut(duration: 0.3), value: phase == .idle)
 
             header
+
+            // 大取景：整屏正方形取景层，盖住机身与顶栏。放在 error / toast 之前，
+            // 让报错和提示仍能浮在它上面。
+            if viewfinderExpanded {
+                ViewfinderExpandedView(
+                    preview: CameraPreviewRef(host: camera.previewHost),
+                    zoomOptions: camera.zoomOptions,
+                    displayZoom: camera.displayZoom,
+                    canShutter: camera.isReady && !busy && !tearing,
+                    onShutter: {
+                        // 先收起，再走原本那条出纸 → 显影 → 落进沙盒的路
+                        collapseViewfinder()
+                        handleShutter()
+                    },
+                    onFlipCamera: {
+                        camera.flipCamera { front in
+                            showToast(front ? "已切换前置镜头" : "已切换后置镜头")
+                        }
+                    },
+                    onSelectZoom: { camera.selectZoom($0) },
+                    onPinchBegin: { camera.beginPinch() },
+                    onPinchChange: { camera.updatePinch($0) },
+                    onCollapse: collapseViewfinder
+                )
+                .transition(.opacity)
+            }
 
             if let errorMsg {
                 VStack {
@@ -282,6 +332,29 @@ struct ContentView: View {
                 }
             }
 
+        }
+        // 大取景是整屏沉浸态：连底部玻璃栏一并藏起来，把那条的高度让给取景框
+        .toolbar(viewfinderExpanded ? .hidden : .visible, for: .tabBar)
+    }
+
+    // MARK: - 大取景
+
+    /// 展开大取景。仅待机相位可展开——出纸 / 显影中弹出整屏取景会打断那套动画。
+    /// 展开前先把机身镜头的预览摘掉，保证同一时刻只有一个 preview layer 挂在 session 上。
+    private func expandViewfinder() {
+        guard phase == .idle, camera.isReady, !viewfinderExpanded else { return }
+        bodyPreviewLive = false
+        withAnimation(.easeInOut(duration: 0.26)) { viewfinderExpanded = true }
+    }
+
+    /// 收起大取景。机身预览等收起动画走完再恢复——若立刻恢复，
+    /// 淡出中的展开层与机身会有两个 preview layer 短暂并存，部分机型上会互相抢画面。
+    private func collapseViewfinder() {
+        guard viewfinderExpanded else { return }
+        withAnimation(.easeInOut(duration: 0.26)) { viewfinderExpanded = false }
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            bodyPreviewLive = true
         }
     }
 
@@ -453,6 +526,7 @@ struct ContentView: View {
 
     private func finishDevelop() {
         phase = .done
+        scheduleAutoCollapse()
         guard let pending = pendingPhoto else { return }
         pendingPhoto = nil
         // 套上当前选中的相纸样式
@@ -462,6 +536,25 @@ struct ContentView: View {
         freshId = record.id
         store.add(record)
         sandbox.sync(photoIDs: visiblePhotos.map(\.id), freshId: record.id)
+    }
+
+    /// 显影完成后计时：相纸停留 autoCollapseDelay 秒再自动向下收回机身
+    /// （与出片卡上的下拉收起同一条路径）。用户触碰出片卡即取消，卡片交还用户手动收。
+    private func scheduleAutoCollapse() {
+        autoCollapseTask?.cancel()
+        autoCollapseTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: UInt64(autoCollapseDelay * 1_000_000_000))
+            // cameraActive 兼查「停在主页且无弹层遮挡」：分享/相纸/详情/贴纸册等盖着时不动卡片
+            guard !Task.isCancelled, phase == .done, !tearing,
+                  cameraActive, !deleteStudioConfirm else { return }
+            handleRetake()
+        }
+    }
+
+    /// 用户与出片卡交互（点看原图、拖拽、卡上任意按钮）：取消自动收起
+    private func cancelAutoCollapse() {
+        autoCollapseTask?.cancel()
+        autoCollapseTask = nil
     }
 
     // MARK: - 拍照
@@ -506,6 +599,7 @@ struct ContentView: View {
         reveal = false
         developShaken = false
         developTask?.cancel()
+        cancelAutoCollapse()
         freshId = nil
         pendingPhoto = nil
         phase = .ejecting
@@ -517,12 +611,28 @@ struct ContentView: View {
         }
 
         Task { @MainActor in
-            if let cutout = await VisionCutout.cutout(original) {
+            // AI 卡通贴纸：先请生成模型把照片变成冰箱贴风格卡片（result 换成卡片），
+            // 再在卡片上抠主体；任何一步失败都回退纯本地流程（result 保持原图、在原图上抠）。
+            var result = original
+            var cutout: UIImage?
+            if settings.doubaoAICartoonEnabled, settings.doubaoConfigured,
+               let card = await makeAICard(original) {
+                if let cardCutout = await VisionCutout.cutout(card) {
+                    result = card
+                    cutout = cardCutout
+                } else {
+                    // 卡片上没抠到主体（纯白底居中构图下罕见）：整体当 AI 失败处理
+                    showToast("AI 生成失败，已回退本地抠图")
+                }
+            }
+            if cutout == nil { cutout = await VisionCutout.cutout(original) }
+
+            if let cutout {
                 // 抠到主体后再识别它的类别（一级分类 + Vision 原始标签），随作品一起保存。
-                // 分类为亚秒级，且出纸计时（≈2s）通常仍占主导，不会拖慢显影。
+                // 分类为亚秒级；本地路径下出纸计时（≈2s）占主导，AI 路径下生成本身占主导。
                 let classification = await SubjectClassifier.classify(cutout)
                 let final = PhotoRecord(id: temp.id, timestamp: temp.timestamp,
-                                        original: original, result: original, cutout: cutout,
+                                        original: original, result: result, cutout: cutout,
                                         primaryCategoryID: classification?.primaryCategory.id,
                                         rawVisionLabel: classification?.rawVisionLabel,
                                         rawVisionConfidence: classification?.rawVisionConfidence,
@@ -547,6 +657,20 @@ struct ContentView: View {
         }
     }
 
+    /// AI 卡通贴纸：请豆包生成模型把照片变成冰箱贴风格的卡通卡片。
+    /// 失败（网络 / 超时 / 数据异常）返回 nil 并提示，调用方回退纯本地抠图流程。
+    private func makeAICard(_ original: UIImage) async -> UIImage? {
+        do {
+            return try await AIRender.cartoonCard(original,
+                                                  apiKey: settings.doubaoAPIKey,
+                                                  modelID: settings.doubaoImageModelID,
+                                                  baseURL: settings.doubaoBaseURL)
+        } catch {
+            showToast("AI 生成失败，已回退本地抠图")
+            return nil
+        }
+    }
+
     private func handleRetake() {
         phase = .idle
         photo = nil
@@ -555,6 +679,7 @@ struct ContentView: View {
         reveal = false
         developShaken = false
         developTask?.cancel()
+        cancelAutoCollapse()
         pendingPhoto = nil
         errorMsg = nil
     }
@@ -635,6 +760,23 @@ struct ContentView: View {
             photo?.paperStyleID = style.id
             selectedPaperID = style.id
         }
+    }
+
+    // MARK: - 旋转
+
+    /// 出片卡上的旋转键：把刚拍这张顺时针再转 90°（90 → 180 → 270 → 0 循环）。
+    private func handleStudioRotate() {
+        guard phase == .done, let p = photo else { return }
+        handleRotate(p, PhotoRotation.next(after: p.rotation))
+    }
+
+    /// 旋转到指定角度并落库，同时同步出片卡与详情抽屉里正在展示的那几份副本。
+    /// 沙盒 / 贴纸册 / 日历直接取 store.photos，随发布自动刷新。
+    private func handleRotate(_ p: PhotoRecord, _ degrees: Int) {
+        guard let updated = store.setRotation(p.id, degrees: degrees) else { return }
+        if photo?.id == p.id { photo = updated }
+        if detailPhoto?.id == p.id { detailPhoto = updated }
+        if let i = detailList.firstIndex(where: { $0.id == p.id }) { detailList[i] = updated }
     }
 
     /// 在详情抽屉里修改一级分类：只改用户可见主标签，不覆盖 Vision 原始识别标签。

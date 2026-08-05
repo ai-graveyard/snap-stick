@@ -17,6 +17,8 @@ struct HistoryView: View {
     let onPickPaper: (PhotoRecord, PaperStyle) -> Void
     /// 在详情抽屉里修改一级分类（Vision 原始标签保持不变）
     let onPickCategory: (PhotoRecord, StickerCategory) -> Void
+    /// 在详情抽屉里旋转到指定角度（顺时针 0 / 90 / 180 / 270）
+    let onRotate: (PhotoRecord, Int) -> Void
     let onDownload: (PhotoRecord) -> Void
     let onDelete: (PhotoRecord) -> Void
     let onToggleVisibility: (PhotoRecord) -> Void
@@ -54,6 +56,7 @@ struct HistoryView: View {
                               selectedID: p.id,
                               onPickPaper: onPickPaper,
                               onPickCategory: onPickCategory,
+                              onRotate: onRotate,
                               onDownload: onDownload,
                               onDelete: onDelete)
                 .environment(\.locale, locale)

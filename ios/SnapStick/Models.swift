@@ -20,13 +20,16 @@ struct PhotoRecord: Identifiable, Equatable {
     let id: UUID
     let timestamp: Date
     /// 原始拍摄照片
-    let original: UIImage
+    var original: UIImage
     /// AI 生成的白底贴纸（整张）
     var result: UIImage
     /// 抠掉背景后的单独贴纸（透明 + 白色模切边）；抠图失败时为 nil
     var cutout: UIImage?
     /// 套用的相纸样式 id（见 PaperCatalog）。仅决定外观，可随时切换。
     var paperStyleID: String
+    /// 用户旋转角度（顺时针 0 / 90 / 180 / 270）。内存里的三张图已按此角度转好，
+    /// 磁盘文件始终是原始朝向，载入时再按角度转一次（见 PhotoStore）。
+    var rotation: Int
     /// 软删除时间戳：nil 表示在用；非 nil 表示已在回收站（满 30 天自动清理）。
     var deletedAt: Date?
     /// 推荐给用户看的一级分类 id（见 StickerCategory）。用户可在详情页修改。
@@ -46,6 +49,7 @@ struct PhotoRecord: Identifiable, Equatable {
          result: UIImage,
          cutout: UIImage? = nil,
          paperStyleID: String = PaperCatalog.defaultID,
+         rotation: Int = 0,
          deletedAt: Date? = nil,
          primaryCategoryID: String? = nil,
          rawVisionLabel: String? = nil,
@@ -58,6 +62,7 @@ struct PhotoRecord: Identifiable, Equatable {
         self.result = result
         self.cutout = cutout
         self.paperStyleID = paperStyleID
+        self.rotation = PhotoRotation.normalized(rotation)
         self.deletedAt = deletedAt
         self.primaryCategoryID = primaryCategoryID
         self.rawVisionLabel = rawVisionLabel
@@ -81,6 +86,7 @@ struct PhotoRecord: Identifiable, Equatable {
             && lhs.result === rhs.result
             && lhs.cutout === rhs.cutout
             && lhs.paperStyleID == rhs.paperStyleID
+            && lhs.rotation == rhs.rotation
             && lhs.deletedAt == rhs.deletedAt
             && lhs.primaryCategoryID == rhs.primaryCategoryID
             && lhs.rawVisionLabel == rhs.rawVisionLabel

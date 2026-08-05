@@ -30,6 +30,9 @@ final class PhotoStore: ObservableObject {
         let hasCutout: Bool
         /// 相纸样式 id；旧数据缺该字段时解码为 nil，回落默认相纸。
         var paperStyleID: String?
+        /// 用户旋转角度（顺时针 0/90/180/270）；旧数据缺该字段时解码为 nil（= 未旋转）。
+        /// 图片文件恒为原始朝向，载入时按这个角度转出用户看到的样子。
+        var rotation: Int?
         /// 软删除时间戳；旧数据缺该字段时解码为 nil（= 在用）。
         var deletedAt: Date?
         /// 一级分类 id（用户可改）；旧数据缺该字段时解码为 nil。
@@ -74,9 +77,14 @@ final class PhotoStore: ObservableObject {
                 didPurge = true
                 continue
             }
-            guard let original = loadImage(m.id, "original"),
-                  let result = loadImage(m.id, "result") else { continue }
-            let cutout = m.hasCutout ? loadImage(m.id, "cutout") : nil
+            guard let originalRaw = loadImage(m.id, "original"),
+                  let resultRaw = loadImage(m.id, "result") else { continue }
+            let cutoutRaw = m.hasCutout ? loadImage(m.id, "cutout") : nil
+            // 文件里是原始朝向，按索引里的角度转成用户看到的样子（0° 时原样返回，无开销）
+            let rotation = PhotoRotation.normalized(m.rotation ?? 0)
+            let original = originalRaw.rotatedClockwise(rotation)
+            let result = resultRaw.rotatedClockwise(rotation)
+            let cutout = cutoutRaw?.rotatedClockwise(rotation)
             let rawLabel = m.rawVisionLabel ?? m.category
             let primaryID = m.primaryCategoryID
                 ?? rawLabel.map { StickerCategory.category(for: $0).id }
@@ -90,6 +98,7 @@ final class PhotoStore: ObservableObject {
                                      result: result,
                                      cutout: cutout,
                                      paperStyleID: m.paperStyleID ?? PaperCatalog.defaultID,
+                                     rotation: rotation,
                                      deletedAt: m.deletedAt,
                                      primaryCategoryID: primaryID,
                                      rawVisionLabel: rawLabel,
@@ -108,6 +117,8 @@ final class PhotoStore: ObservableObject {
 
     // MARK: - 写入
 
+    /// 收录一张新作品。只在刚拍完时调用，此时 `rotation` 恒为 0，
+    /// 因此这里落盘的就是原始朝向——旋转只改索引里的角度，不再重写图片文件。
     func add(_ record: PhotoRecord) {
         writeImage(record.original, record.id, "original", asPNG: false)
         writeImage(record.result, record.id, "result", asPNG: false)
@@ -124,6 +135,19 @@ final class PhotoStore: ObservableObject {
         guard let idx = photos.firstIndex(where: { $0.id == id }) else { return }
         photos[idx].paperStyleID = styleID
         persistIndex()
+    }
+
+    /// 把某条记录旋转到指定角度（顺时针 0 / 90 / 180 / 270）。
+    /// 内存里的三张图当场转好，磁盘文件不动、只把角度写进索引——多次旋转不会反复重编码。
+    /// 返回旋转后的记录，供调用方同步自己手上的那份副本；角度没变或找不到记录时返回 nil。
+    @discardableResult
+    func setRotation(_ id: UUID, degrees: Int) -> PhotoRecord? {
+        guard let idx = photos.firstIndex(where: { $0.id == id }) else { return nil }
+        let rotated = photos[idx].rotated(to: degrees)
+        guard rotated.rotation != photos[idx].rotation else { return nil }
+        photos[idx] = rotated
+        persistIndex()
+        return rotated
     }
 
     /// 用户手动修改一级分类。Vision 原始标签与候选标签保持不变，供后续业务继续使用。
@@ -199,6 +223,7 @@ final class PhotoStore: ObservableObject {
         let metas = (photos + trashed).map { Meta(id: $0.id, timestamp: $0.timestamp,
                                                   hasCutout: $0.cutout != nil,
                                                   paperStyleID: $0.paperStyleID,
+                                                  rotation: $0.rotation,
                                                   deletedAt: $0.deletedAt,
                                                   primaryCategoryID: $0.primaryCategoryID,
                                                   rawVisionLabel: $0.rawVisionLabel,

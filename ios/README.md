@@ -2,13 +2,14 @@
 
 SnapStick (拍立贴) is a native SwiftUI iOS app for turning camera shots into playful die-cut stickers.
 
-Take a photo, let the on-device Vision foreground-mask API lift the subject, wrap it in a white sticker border, watch the print develop over a few seconds (or shake the phone to develop it instantly, like flicking a Polaroid), and drop it into a gyroscope-driven physics sandbox where stickers slide and collide as the phone tilts. The app stores history locally on device; the whole flow needs no backend, account, or API key. Optionally, you can plug your own Volcengine Ark (Doubao) API key into Settings — today it only powers a connectivity test, reserved for future cloud features.
+Take a photo, let the on-device Vision foreground-mask API lift the subject, wrap it in a white sticker border, watch the print develop over a few seconds (or shake the phone to develop it instantly, like flicking a Polaroid), and drop it into a gyroscope-driven physics sandbox where stickers slide and collide as the phone tilts. The app stores history locally on device; the whole flow needs no backend, account, or API key. Optionally, you can plug your own Volcengine Ark (Doubao) API key into Settings and switch on AI 卡通贴纸 (only enabled after a passed connectivity test): each shot is then first turned into a fridge-magnet-style cartoon card by the seedream image model — the same prompt as the web app — before the on-device cutout lifts the subject from it, and any failure falls back to the fully local pipeline.
 
 ## Features
 
 - On-device subject extraction with Vision foreground masks
 - On-device subject classification into 10 lifestyle categories, with manual override and history filtering
 - White die-cut sticker border rendered locally
+- Rotate a shot by 90° / 180° / 270° after capture, from the print card or the sticker detail sheet
 - Shake-to-develop reveal (still phone ≈5s; shake to finish in ≈1s)
 - Gyroscope-driven sticker physics sandbox
 - Local photo history and calendar browsing, plus a sticker detail sheet

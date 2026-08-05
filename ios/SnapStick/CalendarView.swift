@@ -273,20 +273,16 @@ struct CalendarView: View {
         } label: {
             ZStack(alignment: .topLeading) {
                 if let rep = items.first?.displayImage {
-                    // 整张照片必须完整收进方格：用方形底板 + scaledToFit，
+                    // 不垫底板、不描边、不投影，贴纸直接铺在页面底色上。
+                    // 仍用一块透明方板撑住格子：整张照片必须完整收进方格，
                     // 以较长的一边为准等比缩放（不裁切、不溢出到相邻格子）。
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Palette.chip)
+                    Color.clear
                         .aspectRatio(1, contentMode: .fit)
                         .frame(maxWidth: .infinity)
                         .overlay {
                             Image(uiImage: rep)
                                 .resizable().scaledToFit()
-                                .padding(2)
                         }
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(.white, lineWidth: 2))
-                        .shadow(color: .black.opacity(0.08), radius: 2, y: 1)
                 } else {
                     RoundedRectangle(cornerRadius: 8)
                         .fill(Palette.chip)
@@ -316,6 +312,8 @@ struct CalendarView: View {
                     RoundedRectangle(cornerRadius: 8).stroke(accent, lineWidth: 2)
                 }
             }
+            // 底板改成透明后，整格仍要可点（抠图周围的透明区域不能吞掉点击）
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
@@ -358,9 +356,6 @@ struct CalendarView: View {
                 } label: {
                     Image(uiImage: photo.displayImage)
                         .resizable().scaledToFit()
-                        .padding(3)
-                        .background(RoundedRectangle(cornerRadius: 6).fill(Palette.card))
-                        .shadow(color: .black.opacity(0.12), radius: 2, y: 1)
                         .overlay(alignment: .topLeading) { indexBadge(idx + 1) }
                         .rotationEffect(.degrees(tilt(idx)))
                 }
@@ -397,16 +392,14 @@ struct CalendarView: View {
     }
 
     /// 日视图单卡：左上角序号角标，点按打开详情抽屉（分享/删除/换相纸都在详情里）。
+    /// 贴纸本身已带白色模切边，直接浮在页面底色上，不再垫卡片底板与投影。
     /// siblings 为当天这组，传给详情抽屉作左右滑动切换的范围。
     private func dayCard(_ photo: PhotoRecord, index: Int, siblings: [PhotoRecord]) -> some View {
         VStack(spacing: 6) {
             Button { onSelect(photo, siblings) } label: {
                 Image(uiImage: photo.displayImage)
                     .resizable().scaledToFit()
-                    .padding(8)
                     .frame(maxWidth: .infinity)
-                    .background(RoundedRectangle(cornerRadius: 10).fill(Palette.card))
-                    .shadow(color: .black.opacity(0.1), radius: 3, y: 2)
                     .overlay(alignment: .topLeading) { indexBadge(index) }
             }
             .buttonStyle(.plain)

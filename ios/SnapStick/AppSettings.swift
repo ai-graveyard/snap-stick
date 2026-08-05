@@ -40,7 +40,8 @@ final class AppSettings: ObservableObject {
     static let defaultSensitivity = 2.2
     static let defaultAppearance = AppearanceMode.system
     static let defaultDoubaoModelID = "doubao-seed-2-0-mini-260428"
-    static let defaultDoubaoBaseURL = "https://ark.cn-beijing.volces.com/api/v3/chat/completions"
+    static let defaultDoubaoImageModelID = "doubao-seedream-5-0-260128"
+    static let defaultDoubaoBaseURL = "https://ark.cn-beijing.volces.com/api/v3"
     static let doubaoAPIKeyKey = "doubao.apiKey"
     /// 显影时间默认 5s，可调范围 3~8s
     static let defaultDevelopTime = 5.0
@@ -79,18 +80,29 @@ final class AppSettings: ObservableObject {
     @Published var doubaoAPIKey: String {
         didSet { KeychainStore.set(doubaoAPIKey, forKey: Self.doubaoAPIKeyKey) }
     }
-    /// 豆包视觉模型 ID 或火山方舟 Endpoint ID。
+    /// 对话模型 ID 或火山方舟 Endpoint ID（连通性测试用它发「hi」）。
     @Published var doubaoModelID: String {
         didSet { UserDefaults.standard.set(doubaoModelID, forKey: "doubao.modelID") }
     }
-    /// 火山方舟 Chat Completions 地址，默认北京区公共地址。
+    /// 生成模型 ID（AI 卡通贴纸用它做图生图，默认 seedream，与 web 版一致）。
+    @Published var doubaoImageModelID: String {
+        didSet { UserDefaults.standard.set(doubaoImageModelID, forKey: "doubao.imageModel") }
+    }
+    /// 火山方舟 API 根地址（…/api/v3），默认北京区；端点路径由 DoubaoAPI 拼接。
     @Published var doubaoBaseURL: String {
         didSet { UserDefaults.standard.set(doubaoBaseURL, forKey: "doubao.baseURL") }
+    }
+    /// AI 卡通贴纸开关：开启后拍照先请生成模型把照片变成冰箱贴风格卡片、再在本机抠主体，
+    /// 失败自动回退纯本地抠图。只能在「豆包 API」设置页通过连通性测试后开启；
+    /// 修改配置会被设置页自动关掉。
+    @Published var doubaoAICartoonEnabled: Bool {
+        didSet { UserDefaults.standard.set(doubaoAICartoonEnabled, forKey: "doubao.aiCartoon") }
     }
 
     var doubaoConfigured: Bool {
         !doubaoAPIKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && !doubaoModelID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !doubaoImageModelID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && URL(string: doubaoBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)) != nil
     }
 
@@ -108,6 +120,20 @@ final class AppSettings: ObservableObject {
             .flatMap(AppLanguage.init(rawValue:))) ?? .system
         doubaoAPIKey = KeychainStore.string(forKey: Self.doubaoAPIKeyKey) ?? ""
         doubaoModelID = d.string(forKey: "doubao.modelID") ?? Self.defaultDoubaoModelID
-        doubaoBaseURL = d.string(forKey: "doubao.baseURL") ?? Self.defaultDoubaoBaseURL
+        doubaoImageModelID = d.string(forKey: "doubao.imageModel") ?? Self.defaultDoubaoImageModelID
+        // 旧版本 baseURL 存的是完整 Chat Completions 地址，迁移成 API 根地址。
+        // init 阶段 didSet 不触发，手动回写 UserDefaults。
+        var storedBaseURL = d.string(forKey: "doubao.baseURL") ?? Self.defaultDoubaoBaseURL
+        if storedBaseURL.hasSuffix("/chat/completions") {
+            storedBaseURL = String(storedBaseURL.dropLast("/chat/completions".count))
+            d.set(storedBaseURL, forKey: "doubao.baseURL")
+        }
+        doubaoBaseURL = storedBaseURL
+        doubaoAICartoonEnabled = d.object(forKey: "doubao.aiCartoon") as? Bool ?? false
+        // 自愈：配置已残缺（比如换机后钥匙串里没有 Key）时不让开关悬空开着。
+        if doubaoAICartoonEnabled && !doubaoConfigured {
+            doubaoAICartoonEnabled = false
+            d.set(false, forKey: "doubao.aiCartoon")
+        }
     }
 }

@@ -1,9 +1,7 @@
 {
   "sourceLanguage" : "zh-Hans",
   "strings" : {
-    "" : {
-
-    },
+    "" : {},
     "「%@」是会员专属相纸" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -21,9 +19,27 @@
         }
       }
     },
-    "%lld" : {
-
+    "%@\n%@" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@\n%2$@"
+          }
+        }
+      }
     },
+    "%@\n%@\n%@" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@\n%2$@\n%3$@"
+          }
+        }
+      }
+    },
+    "%lld" : {},
     "%lld / %lld" : {
       "localizations" : {
         "zh-Hans" : {
@@ -50,21 +66,21 @@
         }
       }
     },
-    "%lld 天后自动清空" : {
-
+    "%lld 天后自动清空" : {},
+    "%lld 张待清空，30 天后自动清空" : {},
+    "2026 年 5 月" : {},
+    "2026 年 6 月" : {},
+    "AI 配置有问题" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AI configuration problem"
+          }
+        }
+      }
     },
-    "%lld 张待清空，30 天后自动清空" : {
-
-    },
-    "2026 年 5 月" : {
-
-    },
-    "2026 年 6 月" : {
-
-    },
-    "API Key" : {
-
-    },
+    "API Key" : {},
     "API Key 只保存在本机钥匙串。识别时会从这台设备直接请求火山方舟，不经过拍立贴统一后端。" : {
       "localizations" : {
         "en" : {
@@ -81,9 +97,7 @@
         }
       }
     },
-    "Developing" : {
-
-    },
+    "Developing" : {},
     "English" : {
       "localizations" : {
         "en" : {
@@ -100,11 +114,39 @@
         }
       }
     },
-    "Snap Ready" : {
-
+    "Snap Ready" : {},
+    "SNAPSTICK" : {},
+    "上拉编辑" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Swipe Up to Edit"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "上拉编辑"
+          }
+        }
+      }
     },
-    "SNAPSTICK" : {
-
+    "下滑收起" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Swipe down to close"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下滑收起"
+          }
+        }
+      }
     },
     "中文" : {
       "localizations" : {
@@ -122,9 +164,7 @@
         }
       }
     },
-    "主体识别更精准，抠图边缘更干净" : {
-
-    },
+    "主体识别更精准，抠图边缘更干净" : {},
     "主题外观" : {
       "localizations" : {
         "en" : {
@@ -141,9 +181,7 @@
         }
       }
     },
-    "交互设置" : {
-
-    },
+    "交互设置" : {},
     "今天" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -161,9 +199,7 @@
         }
       }
     },
-    "今天已经拍满 99 张啦，明天再来" : {
-
-    },
+    "今天已经拍满 99 张啦，明天再来" : {},
     "今日免费相纸已用完，明天再来或开通会员享无限张" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -215,9 +251,7 @@
         }
       }
     },
-    "今日剩余张数" : {
-
-    },
+    "今日剩余张数" : {},
     "今日相纸已恢复满额 %lld 张" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -235,9 +269,7 @@
         }
       }
     },
-    "会移到回收站，30 天内可恢复。" : {
-
-    },
+    "会移到回收站，30 天内可恢复。" : {},
     "你已是会员" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -251,22 +283,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "你已是会员"
-          }
-        }
-      }
-    },
-    "例如 ep-xxxxxxxx 或 doubao-vision-..." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "For example: ep-xxxxxxxx or doubao-vision-..."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "例如 ep-xxxxxxxx 或 doubao-vision-..."
           }
         }
       }
@@ -385,12 +401,8 @@
         }
       }
     },
-    "全部贴纸会移到回收站，30 天内可恢复。" : {
-
-    },
-    "全面支持中英文，可在设置里随时切换" : {
-
-    },
+    "全部贴纸会移到回收站，30 天内可恢复。" : {},
+    "全面支持中英文，可在设置里随时切换" : {},
     "共 %lld 张" : {
       "localizations" : {
         "en" : {
@@ -506,9 +518,7 @@
         }
       }
     },
-    "最新" : {
-
-    },
+    "最新" : {},
     "冲印中" : {
       "localizations" : {
         "en" : {
@@ -639,12 +649,8 @@
         }
       }
     },
-    "删除后无法恢复。" : {
-
-    },
-    "删除的贴纸保留 30 天，到期自动清空" : {
-
-    },
+    "删除后无法恢复。" : {},
+    "删除的贴纸保留 30 天，到期自动清空" : {},
     "删除这张贴纸？" : {
       "localizations" : {
         "en" : {
@@ -729,9 +735,7 @@
         }
       }
     },
-    "即将自动清空" : {
-
-    },
+    "即将自动清空" : {},
     "历史记录" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -849,6 +853,22 @@
         }
       }
     },
+    "变焦" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zoom"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "变焦"
+          }
+        }
+      }
+    },
     "向豆包发送一句「hi」，验证 API Key、模型与接口地址是否可用。" : {
       "localizations" : {
         "en" : {
@@ -910,15 +930,9 @@
         }
       }
     },
-    "回收站" : {
-
-    },
-    "回收站与中英双语" : {
-
-    },
-    "回收站是空的\n删除的贴纸会先放在这里" : {
-
-    },
+    "回收站" : {},
+    "回收站与中英双语" : {},
+    "回收站是空的\n删除的贴纸会先放在这里" : {},
     "回看与管理全部贴纸" : {
       "localizations" : {
         "en" : {
@@ -951,12 +965,8 @@
         }
       }
     },
-    "声音" : {
-
-    },
-    "声音、移动速度与倾斜灵敏度" : {
-
-    },
+    "声音" : {},
+    "声音、移动速度与倾斜灵敏度" : {},
     "好" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1039,9 +1049,7 @@
         }
       }
     },
-    "对准、按下快门，把此刻冲印成贴纸" : {
-
-    },
+    "对准、按下快门，把此刻冲印成贴纸" : {},
     "已保存到相册" : {
       "localizations" : {
         "en" : {
@@ -1090,9 +1098,7 @@
         }
       }
     },
-    "已删除的贴纸，30 天后自动清空" : {
-
-    },
+    "已删除的贴纸，30 天后自动清空" : {},
     "已配置" : {
       "localizations" : {
         "en" : {
@@ -1210,12 +1216,8 @@
         }
       }
     },
-    "彻底删除" : {
-
-    },
-    "彻底删除这张贴纸？" : {
-
-    },
+    "彻底删除" : {},
+    "彻底删除这张贴纸？" : {},
     "总贴纸" : {
       "localizations" : {
         "en" : {
@@ -1232,9 +1234,7 @@
         }
       }
     },
-    "恢复" : {
-
-    },
+    "恢复" : {},
     "恢复默认接口地址" : {
       "localizations" : {
         "en" : {
@@ -1384,9 +1384,7 @@
         }
       }
     },
-    "拍立贴，正式登场" : {
-
-    },
+    "拍立贴，正式登场" : {},
     "拍立贴会员" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1465,22 +1463,6 @@
         }
       }
     },
-    "推荐填写你在火山方舟控制台创建的视觉理解模型 Endpoint ID；也可以填写账号可直接调用的豆包视觉模型 ID。" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Use the vision model Endpoint ID you created in the Volcano Ark console, or a Doubao vision model ID your account can call directly."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "推荐填写你在火山方舟控制台创建的视觉理解模型 Endpoint ID；也可以填写账号可直接调用的豆包视觉模型 ID。"
-          }
-        }
-      }
-    },
     "摄像头权限被拒绝。请在系统设置里允许 SnapStick 访问摄像头，然后重试。" : {
       "localizations" : {
         "en" : {
@@ -1497,11 +1479,55 @@
         }
       }
     },
-    "摇一摇加速显影" : {
-
+    "摇一摇加速显影" : {},
+    "收起" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "收起"
+          }
+        }
+      }
     },
-    "新增「回收站」，删除的贴纸 30 天内都能恢复" : {
-
+    "放大取景" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enlarge viewfinder"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "放大取景"
+          }
+        }
+      }
+    },
+    "新增「回收站」，删除的贴纸 30 天内都能恢复" : {},
+    "旋转" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rotate"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "旋转"
+          }
+        }
+      }
     },
     "无法保存：相册权限被拒绝" : {
       "localizations" : {
@@ -1569,9 +1595,7 @@
         }
       }
     },
-    "日历与贴纸册，随时回看过往" : {
-
-    },
+    "日历与贴纸册，随时回看过往" : {},
     "昨天" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1653,12 +1677,8 @@
         }
       }
     },
-    "更多相纸样式与细节打磨" : {
-
-    },
-    "更新历史" : {
-
-    },
+    "更多相纸样式与细节打磨" : {},
+    "更新历史" : {},
     "月" : {
       "comment" : "Calendar mode: month",
       "extractionState" : "stale",
@@ -1732,22 +1752,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "本月"
-          }
-        }
-      }
-    },
-    "模型 / Endpoint ID" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Model / Endpoint ID"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "模型 / Endpoint ID"
           }
         }
       }
@@ -1893,12 +1897,8 @@
         }
       }
     },
-    "清空回收站" : {
-
-    },
-    "清空回收站？" : {
-
-    },
+    "清空回收站" : {},
+    "清空回收站？" : {},
     "清空所有记录" : {
       "localizations" : {
         "en" : {
@@ -2014,12 +2014,8 @@
         }
       }
     },
-    "生成图片失败，请重试" : {
-
-    },
-    "甩一甩手机，加速显影" : {
-
-    },
+    "生成图片失败，请重试" : {},
+    "甩一甩手机，加速显影" : {},
     "界面语言" : {
       "localizations" : {
         "en" : {
@@ -2052,9 +2048,7 @@
         }
       }
     },
-    "相纸" : {
-
-    },
+    "相纸" : {},
     "相纸已重置" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2100,6 +2094,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "看贴图"
+          }
+        }
+      }
+    },
+    "知道了" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OK"
           }
         }
       }
@@ -2288,6 +2292,16 @@
         }
       }
     },
+    "请检查 API Key、模型与接口地址后重试。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check the API Key, model ID, and endpoint, then try again."
+          }
+        }
+      }
+    },
     "请输入火山方舟 API Key" : {
       "localizations" : {
         "en" : {
@@ -2320,9 +2334,7 @@
         }
       }
     },
-    "贴图" : {
-
-    },
+    "贴图" : {},
     "贴纸册" : {
       "localizations" : {
         "en" : {
@@ -2530,9 +2542,7 @@
         }
       }
     },
-    "这个操作会永久删除回收站里的全部贴纸，无法撤销。输入「我确认」继续。" : {
-
-    },
+    "这个操作会永久删除回收站里的全部贴纸，无法撤销。输入「我确认」继续。" : {},
     "连接失败" : {
       "localizations" : {
         "en" : {
@@ -2575,22 +2585,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "选择相纸"
-          }
-        }
-      }
-    },
-    "通常不用修改。默认使用火山方舟北京区 Chat Completions 地址。" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Usually you don't need to change this. The default is the Volcano Ark Beijing Chat Completions endpoint."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "通常不用修改。默认使用火山方舟北京区 Chat Completions 地址。"
           }
         }
       }
@@ -2645,9 +2639,7 @@
         }
       }
     },
-    "陀螺仪物理沙盒，贴纸随手机倾斜滑动碰撞" : {
-
-    },
+    "陀螺仪物理沙盒，贴纸随手机倾斜滑动碰撞" : {},
     "隐藏 API Key" : {
       "localizations" : {
         "en" : {
@@ -2740,6 +2732,116 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "黑夜"
+          }
+        }
+      }
+    },
+    "AI 卡通贴纸" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AI Cartoon Sticker"
+          }
+        }
+      }
+    },
+    "开启后，拍照会先请生成模型把照片变成冰箱贴风格的卡通贴纸卡片，再在本机抠出主体做成贴纸；生成失败自动回退本地抠图。开启前会自动进行一次连接测试，修改上方配置会自动关闭开关。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When on, each shot first asks the image model to turn the photo into a fridge-magnet-style cartoon sticker card, then the subject is cut out on device; if generation fails it automatically falls back to on-device cutout. Turning it on runs a connectivity test first, and editing the configuration above turns it off."
+          }
+        }
+      }
+    },
+    "AI 生成失败，已回退本地抠图" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AI generation failed — used on-device cutout"
+          }
+        }
+      }
+    },
+    "已配置，AI 卡通贴纸已开启" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Configured; AI Cartoon Sticker is on"
+          }
+        }
+      }
+    },
+    "对话模型 ID" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chat model ID"
+          }
+        }
+      }
+    },
+    "连接测试用它发一句「hi」，验证 API Key 与接口连通性。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The connectivity test sends it a “hi” to verify the API Key and endpoint."
+          }
+        }
+      }
+    },
+    "生成模型 ID" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Image model ID"
+          }
+        }
+      }
+    },
+    "AI 卡通贴纸用它把照片生成冰箱贴风格的卡片，需要你的火山方舟账号已开通对应模型。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AI Cartoon Sticker uses it to turn photos into fridge-magnet-style cards; your Volcengine Ark account must have access to this model."
+          }
+        }
+      }
+    },
+    "例如 doubao-seed-2-0-mini-…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "e.g. doubao-seed-2-0-mini-…"
+          }
+        }
+      }
+    },
+    "例如 doubao-seedream-5-0-…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "e.g. doubao-seedream-5-0-…"
+          }
+        }
+      }
+    },
+    "通常不用修改。默认使用火山方舟北京区 API 根地址，调用时会自动拼接对话与生图端点。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usually no need to change. Defaults to the Volcengine Ark Beijing API root; the chat and image endpoints are appended automatically."
           }
         }
       }

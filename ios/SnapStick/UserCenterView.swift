@@ -105,8 +105,9 @@ struct UserCenterView: View {
     }
 
     private var doubaoSubtitle: LocalizedStringKey {
-        settings.doubaoConfigured ? "已配置，将使用你自己的火山方舟 Key"
-                                  : "填写你自己的火山方舟 Key"
+        if !settings.doubaoConfigured { return "填写你自己的火山方舟 Key" }
+        return settings.doubaoAICartoonEnabled ? "已配置，AI 卡通贴纸已开启"
+                                               : "已配置，将使用你自己的火山方舟 Key"
     }
 
     /// 「关于拍立贴」单独成块，不与上方设置列表相连

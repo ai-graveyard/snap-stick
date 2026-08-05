@@ -26,11 +26,20 @@ struct PolaroidStudioView: View {
     let ejectDuration: Double
     /// 揭晓动画时长（模糊→清晰）
     let developDuration: Double
-    let session: AVCaptureSessionRef
+    let preview: CameraPreviewRef
+    /// 可选变焦档位（显示倍率，如 [0.5, 1, 2, 3]）。少于 2 档时饰条回落成纯装饰形态。
+    let zoomOptions: [Double]
+    /// 当前显示倍率；捏合过程中是连续值（如 1.4）
+    let displayZoom: Double
 
     let onBeforeShutter: () -> Void
     let onShutter: () -> Void
     let onFlipCamera: () -> Void
+    /// 点选某一档倍率（平滑滑过去）
+    let onSelectZoom: (Double) -> Void
+    /// 机身捏合：起手 / 进行中（传手势的相对缩放比）
+    let onPinchBegin: () -> Void
+    let onPinchChange: (Double) -> Void
     let onRetake: () -> Void
     /// 删除当前出片卡上的作品（先弹确认，移到回收站）
     let onDelete: () -> Void
@@ -44,6 +53,15 @@ struct PolaroidStudioView: View {
     let onOpenPaper: () -> Void
     /// 打开当前这张的详情抽屉（改分类 / 换相纸 / 查看识别信息）；仅出片完成时可用
     let onEdit: () -> Void
+    /// 把当前这张顺时针再转 90°（90 → 180 → 270 → 0 循环）；仅出片完成时可用
+    let onRotate: () -> Void
+    /// 用户触碰出片卡（点看原图、拖拽、卡上任意按钮）：宿主用来取消「出片后自动收起」计时
+    let onCardInteraction: () -> Void
+    /// 机身镜头是否渲染实时预览。展开大取景期间交由 ViewfinderExpandedView 独占，
+    /// 这里留黑圆——同一个 session 上挂两个 AVCaptureVideoPreviewLayer 会互相抢画面。
+    let previewLive: Bool
+    /// 点镜头展开大取景（仅待机相位可用）
+    let onExpandViewfinder: () -> Void
 
     /// 当前界面 locale（由根视图按所选语言注入），供日期格式化使用。
     @Environment(\.locale) private var locale
@@ -61,6 +79,11 @@ struct PolaroidStudioView: View {
     @State private var showingOriginal = false
     // 向下拖拽收起：手指实时跟随的竖向位移（松手后归零或触发收起）
     @State private var dragY: CGFloat = 0
+    // 旋转键的转动观感：图片瞬间转好 90° 的同时，先把视图反向预置 -90°（画面不跳），
+    // 下一帧再动画回 0，看上去就是照片自己转了过去
+    @State private var spin: Double = 0
+    // 捏合变焦是否正在进行（用于只在手势起手时回调一次 onPinchBegin）
+    @State private var pinching = false
 
     private var busy: Bool { phase == .ejecting || phase == .developing }
     private var paperOut: Bool { phase != .idle }
@@ -71,6 +94,17 @@ struct PolaroidStudioView: View {
 
     // 尺寸（全部由相机宽度派生）
     private var camH: CGFloat { camW * 1.25 }
+    /// 取景镜头直径。这个比例越大取景越大，但机身内部的竖向留白也随之被吃掉——
+    /// 顶板 + 镜头 + 变焦条 + 状态区加起来必须仍塞得进 camH（=1.25×camW），
+    /// 所以改这里必须连着下面 lens 的上下留白一起算。
+    private var lensD: CGFloat { camW * 0.70 }
+    /// 取景画面在镜头里的内缩量。镜头里那几层（玻璃反光、显影遮罩）共用同一个值，
+    /// 否则放大后各圈会互相错位。可见取景直径 = lensD × (1 − 2×0.09)。
+    private var lensInset: CGFloat { lensD * 0.09 }
+    /// 快门键外圈直径
+    private let shutterSize: CGFloat = 64
+    /// 快门键距机身顶的偏移。左上角的胶片计数器与它同源对齐，改这里两边一起走。
+    private var shutterTop: CGFloat { camH * 0.20 }
     private var paperW: CGFloat { camW * 0.82 }
     private var paperPad: CGFloat { paperW * 0.05 }
     private var windowSide: CGFloat { paperW - paperPad * 2 }
@@ -134,6 +168,7 @@ struct PolaroidStudioView: View {
                 // 新一张默认显示贴图（清掉上一张可能停留的「原图」切换态）
                 showingOriginal = false
                 dragY = 0
+                spin = 0
                 // 复位揭晓态，下一张从「冲印中」药膜开始
                 revealActive = false
                 // 出新纸：先无动画归位到藏纸口（撕纸后此刻仍透明、不可见），再上升并淡入
@@ -196,6 +231,7 @@ struct PolaroidStudioView: View {
                         }
                     }
                     .transition(.opacity)
+                    .rotationEffect(.degrees(spin))
                     .contentShape(Rectangle())
                     .onTapGesture {
                         withAnimation(.easeInOut(duration: 0.2)) { showingOriginal.toggle() }
@@ -260,28 +296,15 @@ struct PolaroidStudioView: View {
                     .allowsHitTesting(false)
                 }
 
-                // 顶部角标行（仅出片完成时）：左上「编辑」打开详情抽屉，右上相纸切换。
-                // 两个键随卡片一同出现/消失——不在卡片时绝不显示。
+                // 顶部角标行（仅出片完成时）：左上「编辑 + 旋转」，右上相纸切换。
+                // 这几个键随卡片一同出现/消失——不在卡片时绝不显示。
                 if phase == .done {
                     VStack {
-                        HStack {
-                            Button(action: onEdit) {
-                                Image(systemName: "slider.horizontal.3")
-                                    .font(.system(size: 13, weight: .semibold))
-                                    .foregroundColor(.white.opacity(0.9))
-                                    .frame(width: 28, height: 28)
-                                    .background(Circle().fill(.black.opacity(0.5)))
-                            }
-                            .accessibilityLabel(Text("编辑"))
+                        HStack(spacing: 8) {
+                            windowButton("slider.horizontal.3", label: "编辑", action: onEdit)
+                            windowButton("rotate.right", label: "旋转", action: handleRotate)
                             Spacer()
-                            Button(action: onOpenPaper) {
-                                Image(systemName: "square.stack.3d.up.fill")
-                                    .font(.system(size: 13, weight: .semibold))
-                                    .foregroundColor(.white.opacity(0.9))
-                                    .frame(width: 28, height: 28)
-                                    .background(Circle().fill(.black.opacity(0.5)))
-                            }
-                            .accessibilityLabel(Text("相纸"))
+                            windowButton("square.stack.3d.up.fill", label: "相纸", action: onOpenPaper)
                         }
                         Spacer()
                     }
@@ -356,8 +379,23 @@ struct PolaroidStudioView: View {
         // dragY 叠加用户向下拖拽的实时位移
         .offset(y: (didInitPaper ? paperY : basePaperY(phase)) + dragY)
         .opacity(didInitPaper ? paperOpacity : 1)
+        // 卡上任何点按（含四角/底部按钮、切原图）都算「用户在看这张」，通知宿主取消自动收起
+        .simultaneousGesture(TapGesture().onEnded { onCardInteraction() })
         // 在出片卡上向下滑动即可收起相纸，只留相机
         .simultaneousGesture(collapseDrag)
+    }
+
+    /// 照片窗口四角的小圆键（编辑 / 旋转 / 相纸），统一尺寸与配色。
+    private func windowButton(_ icon: String, label: LocalizedStringKey,
+                              action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(.white.opacity(0.9))
+                .frame(width: 28, height: 28)
+                .background(Circle().fill(.black.opacity(0.5)))
+        }
+        .accessibilityLabel(Text(label))
     }
 
     /// 出片完成后，在卡片上向下滑动把相纸收起（退回机身，仅留相机）。
@@ -366,6 +404,7 @@ struct PolaroidStudioView: View {
         DragGesture(minimumDistance: 18)
             .onChanged { v in
                 guard phase == .done else { return }
+                onCardInteraction()
                 // 仅在明显向下时跟随，避免与左右翻看冲突
                 guard v.translation.height > 0,
                       v.translation.height > abs(v.translation.width) else { return }
@@ -430,23 +469,11 @@ struct PolaroidStudioView: View {
             .padding(.horizontal, camW * 0.06)
             .padding(.top, camW * 0.06)
 
-            // 大镜头（顶部多留白，整体下移，给右上角的快门让出空间）
-            lens.padding(.top, camW * 0.14).padding(.bottom, camW * 0.06)
+            // 大镜头。镜头从 0.62 加粗到 0.70 后，上下留白同步收窄，
+            // 让「顶板 + 镜头 + 变焦条 + 状态区」的总高仍落在 camH 之内（余约 0.025×camW）。
+            lens.padding(.top, camW * 0.10).padding(.bottom, camW * 0.05)
 
-            // 品牌饰条：单色圆角条 + 细分点纹（原创，非任何商标光谱）
-            HStack(spacing: camW * 0.018) {
-                ForEach(0..<7, id: \.self) { _ in
-                    Capsule().fill(.white.opacity(0.22))
-                        .frame(width: camW * 0.012)
-                }
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: camW * 0.075)
-            .background(
-                Capsule().fill(LinearGradient(colors: [Palette.klein, Palette.kleinDeep],
-                                              startPoint: .leading, endPoint: .trailing))
-            )
-            .padding(.horizontal, camW * 0.09)
+            zoomStrip
 
             // 底部状态区
             HStack(alignment: .bottom) {
@@ -459,7 +486,7 @@ struct PolaroidStudioView: View {
                     .shadow(color: Palette.klein.opacity(0.65), radius: 5)
             }
             .padding(.horizontal, camW * 0.08)
-            .padding(.top, camW * 0.045)
+            .padding(.top, camW * 0.035)
             Spacer(minLength: 0)
         }
         .frame(width: camW, height: camH)
@@ -492,6 +519,120 @@ struct PolaroidStudioView: View {
         }
         .overlay(alignment: .topTrailing) { shutterButton }
         .overlay(alignment: .topLeading) { filmCounter }
+        // 捏合变焦：手势区覆盖整个机身（取景圆太小，两指摆不开）
+        .simultaneousGesture(zoomPinch)
+    }
+
+    // MARK: - 变焦条（兼品牌饰条）
+
+    /// 变焦可用（至少两档可选）。
+    private var zoomEnabled: Bool { zoomOptions.count > 1 }
+
+    /// 镜头正下方的品牌饰条 —— 同时是变焦控件。
+    /// 有两档以上可选倍率时显示倍率胶囊；否则（虚拟多摄降级、或该镜头压根不支持变焦）
+    /// 回落成原本的单色圆角条 + 细分点纹装饰（原创，非任何商标光谱）。
+    /// 两种形态外框尺寸完全一致，机身各段的定位不受影响，切换镜头时不会有布局跳变。
+    private var zoomStrip: some View {
+        HStack(spacing: camW * 0.02) {
+            Group {
+                if zoomEnabled {
+                    HStack(spacing: camW * 0.012) {
+                        ForEach(zoomOptions, id: \.self) { zoomPill($0) }
+                    }
+                } else {
+                    HStack(spacing: camW * 0.018) {
+                        ForEach(0..<7, id: \.self) { _ in
+                            Capsule().fill(.white.opacity(0.22))
+                                .frame(width: camW * 0.012)
+                        }
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity)
+
+            // 饰条右端（最大那档倍率之后）：放大取景键
+            expandButton
+        }
+        .padding(.horizontal, camW * 0.02)
+        .frame(height: camW * 0.075)
+        .background(
+            Capsule().fill(LinearGradient(colors: [Palette.klein, Palette.kleinDeep],
+                                          startPoint: .leading, endPoint: .trailing))
+        )
+        .padding(.horizontal, camW * 0.09)
+    }
+
+    /// 饰条右端的放大取景键——展开整屏的正方形大取景。
+    /// 刻意不把图标叠进取景圈里：那块地方正是用户在看的画面，不该被 UI 占掉。
+    /// 与变焦胶囊同高同底色，读起来是同一排控件里的一个键。
+    private var expandButton: some View {
+        let pillH = camW * 0.055
+        return Button(action: onExpandViewfinder) {
+            Image(systemName: "arrow.up.left.and.arrow.down.right")
+                .font(.system(size: camW * 0.032, weight: .bold))
+                .foregroundColor(.white.opacity(0.85))
+                .frame(width: pillH, height: pillH)
+                .background(Circle().fill(.white.opacity(0.16)))
+                // 同 zoomPill：用纵向留白把命中区补到 44pt，溢出的部分落进饰条上下的空白里
+                .padding(.vertical, max(0, (44 - pillH) / 2))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        // 只有待机相位能展开（与 ContentView.expandViewfinder 的 guard 一致），
+        // 出纸 / 显影 / 出片卡在屏时置灰，不做「点了没反应」的键
+        .disabled(phase != .idle)
+        .opacity(phase == .idle ? 1 : 0.4)
+        .accessibilityLabel(Text("放大取景"))
+    }
+
+    /// 当前生效的档位：不超过当前倍率的最大档。
+    /// 捏合到 1.4× 时高亮的是 1× 那颗（而不是四舍五入到 1×/2× 中更近的那个）。
+    private var activeZoomLevel: Double? {
+        zoomOptions.last { $0 <= displayZoom + 0.001 } ?? zoomOptions.first
+    }
+
+    /// 单个倍率胶囊。选中档用镉黄底 + 克莱因蓝字，正是品牌的蓝黄撞色。
+    /// 选中的那颗显示的是**实时倍率**而非档位标称值，所以捏合到 1.4× 时它写「1.4×」，
+    /// 不会出现「写着 1× 实际 1.4×」的谎报。
+    private func zoomPill(_ level: Double) -> some View {
+        let selected = activeZoomLevel == level
+        let pillH = camW * 0.055
+        return Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            onSelectZoom(level)
+        } label: {
+            Text(zoomLabel(selected ? displayZoom : level))
+                .font(.system(size: camW * 0.036, weight: .bold))
+                .monospacedDigit()
+                .foregroundColor(selected ? Palette.klein : .white.opacity(0.75))
+                .frame(maxWidth: .infinity)
+                .frame(height: pillH)
+                .background(Capsule().fill(selected ? Palette.cadmium : .white.opacity(0.14)))
+                // 饰条本体只有 camW*0.075（≈22pt）高，远低于 44pt 的最小点击目标。
+                // 这里用纵向留白把命中区补到 44pt：它会溢出饰条外框、落进镜头下方和状态区
+                // 的留白里（那两处没有别的控件），视觉上一切照旧。
+                .padding(.vertical, max(0, (44 - pillH) / 2))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text("变焦"))
+        .accessibilityValue(Text(zoomLabel(level)))
+    }
+
+    /// 机身上的双指捏合变焦。取景圆可见直径只有 ~138pt，两根手指根本摆不开，
+    /// 所以手势区放大到整个机身（camW × camH）。用 simultaneousGesture 挂载，
+    /// 不抢快门/翻转键的点击，也不干扰相纸卡上的 collapseDrag（那个在另一棵子树）。
+    private var zoomPinch: some Gesture {
+        MagnifyGesture(minimumScaleDelta: 0.01)
+            .onChanged { value in
+                guard zoomEnabled else { return }
+                if !pinching {
+                    pinching = true
+                    onPinchBegin()
+                }
+                onPinchChange(value.magnification)
+            }
+            .onEnded { _ in pinching = false }
     }
 
     /// 机身左上角的复古胶片计数器：与右上角快门对称的一面。
@@ -503,9 +644,9 @@ struct PolaroidStudioView: View {
         let digitW = camW * 0.034          // 单个数字宽度
         let vPad = camW * 0.012
         let hPad = camW * 0.015
-        // 与右侧快门同源对齐，再略向上提一点
+        // 与右侧快门同源对齐（shutterTop + 快门半径 = 快门圆心），再略向上提一点
         let totalH = digitH + vPad * 2
-        let topPad = camH * 0.225 + 32 - totalH / 2 - camH * 0.03
+        let topPad = shutterTop + shutterSize / 2 - totalH / 2 - camH * 0.03
         return HStack(spacing: -camW * 0.004) {
             DigitWheel(digit: value / 10, width: digitW, height: digitH)
             DigitWheel(digit: value % 10, width: digitW, height: digitH)
@@ -580,33 +721,45 @@ struct PolaroidStudioView: View {
     }
 
     private var lens: some View {
-        let d = camW * 0.62
+        let d = lensD
+        let inset = lensInset
         return ZStack {
             Circle().fill(LinearGradient(colors: [Color(white: 0.33), Color(white: 0.13)],
                                          startPoint: .topLeading, endPoint: .bottomTrailing))
             Circle().fill(.black).padding(d * 0.08)
-            // 实时取景
+            // 实时取景。展开大取景时预览交给 ViewfinderExpandedView 独占，这里退回黑圆。
             Group {
-                if let s = session.session {
-                    CameraPreviewView(session: s)
+                if previewLive, let h = preview.host {
+                    CameraPreviewView(host: h)
                 } else {
                     Color.black
                 }
             }
             .clipShape(Circle())
-            .padding(d * 0.13)
+            .padding(inset)
 
             if busy {
                 Circle().fill(Color(red: 0.035, green: 0.031, blue: 0.027))
                     .overlay(Text("Developing")
                         .font(.system(size: 9, weight: .semibold)).tracking(4)
                         .foregroundColor(.white.opacity(0.3)))
-                    .padding(d * 0.13)
+                    .padding(inset)
             }
             // 玻璃反光
-            Circle().stroke(.white.opacity(0.1)).padding(d * 0.13)
+            Circle().stroke(.white.opacity(0.1)).padding(inset)
             // 品牌色镜圈
             Circle().stroke(Palette.klein.opacity(0.6), lineWidth: 2).padding(d * 0.04)
+
+            // 直接点取景圈也能展开大取景——一块隐形的大命中区。
+            // 可见的入口是下方饰条右端的 expandButton：图标不进取景圈，免得挡住正在拍的画面。
+            if phase == .idle {
+                Circle()
+                    .fill(.clear)
+                    .contentShape(Circle())
+                    .onTapGesture(perform: onExpandViewfinder)
+                    .accessibilityLabel(Text("放大取景"))
+                    .accessibilityAddTraits(.isButton)
+            }
         }
         .frame(width: d, height: d)
     }
@@ -625,7 +778,7 @@ struct PolaroidStudioView: View {
                         .allowsHitTesting(false)
                     Circle()
                         .stroke(.white, lineWidth: 4)
-                        .frame(width: 64, height: 64)
+                        .frame(width: shutterSize, height: shutterSize)
                         .shadow(color: Palette.ink.opacity(0.3), radius: 4, y: 2)
                     Circle()
                         .fill(Palette.cadmium)
@@ -640,7 +793,7 @@ struct PolaroidStudioView: View {
         .buttonStyle(ShutterButtonStyle())
         .disabled(!canShutter)
         .opacity(canShutter ? 1 : 0.45)
-        .padding(.top, camH * 0.225)
+        .padding(.top, shutterTop)
         .padding(.trailing, camW * 0.04)
         .onAppear { shutterPulse = true }
     }
@@ -658,6 +811,18 @@ struct PolaroidStudioView: View {
             try? await Task.sleep(nanoseconds: 90_000_000)
             withAnimation(.easeOut(duration: 0.45)) { flashLampOn = false }
             onShutter()
+        }
+    }
+
+    /// 旋转键：图片顺时针转 90° 的同时，把视图反向预置 -90°（两者抵消，画面不跳），
+    /// 下一帧再动画回正，观感就是照片跟着手指转了过去。
+    private func handleRotate() {
+        guard phase == .done, photo != nil else { return }
+        spin = -90          // 不包在 withAnimation 里 → 立即生效、无过渡
+        onRotate()
+        Task { @MainActor in
+            // 等预置的这一帧落地，再从 -90 动画回 0，避免两次赋值被合并成「没动」
+            withAnimation(.easeOut(duration: 0.32)) { spin = 0 }
         }
     }
 
@@ -693,8 +858,9 @@ private struct DigitWheel: View {
     }
 }
 
-/// 快门按钮按下反馈：回弹式缩放，模拟实体按键的下压手感
-private struct ShutterButtonStyle: ButtonStyle {
+/// 快门按钮按下反馈：回弹式缩放，模拟实体按键的下压手感。
+/// 机身快门与大取景（`ViewfinderExpandedView`）的控件共用同一份手感。
+struct ShutterButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .scaleEffect(configuration.isPressed ? 0.88 : 1)
@@ -703,7 +869,8 @@ private struct ShutterButtonStyle: ButtonStyle {
     }
 }
 
-/// 轻量包装，避免把 AVCaptureSession 直接作为可比较的 View 属性
-struct AVCaptureSessionRef {
-    let session: AVCaptureSession?
+/// 轻量包装，避免把 UIKit 预览视图直接作为可比较的 View 属性。
+/// 携带的是 `CameraController.previewHost` 那一个共享实例（见 CameraPreviewView.swift）。
+struct CameraPreviewRef {
+    let host: CameraPreviewHost?
 }

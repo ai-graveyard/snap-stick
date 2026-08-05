@@ -429,10 +429,11 @@ enum TabBarMetrics {
 /// 预渲染「贴纸 + 投影」位图缓存。投影（高斯模糊）只在首次按 id 烘焙一次，之后每帧只是把
 /// 这张位图按位置/旋转/缩放画出去——**不再逐帧做模糊**。逐帧高斯模糊（原 Canvas 的
 /// `addFilter(.shadow)`）在下落时所有贴纸同时重画会吃满 GPU 导致掉帧，是「一卡一卡」的主因。
-/// 贴纸图片创建后不变，故按 id 缓存安全。
+/// 按 id 缓存，并记住烘焙时用的那张原图——用户旋转贴纸后图片会被换成新实例，
+/// 靠这个身份比对让缓存失效，避免沙盒里还画着旋转前的旧位图。
 @MainActor
 final class SpriteCache {
-    private var cache: [UUID: UIImage] = [:]
+    private var cache: [UUID: (base: UIImage, sprite: UIImage)] = [:]
 
     /// scale=1 时贴纸内容方框边长（pt），与原 STICKER 一致。
     static let content: CGFloat = STICKER
@@ -442,9 +443,9 @@ final class SpriteCache {
     static var side: CGFloat { content + pad * 2 }
 
     func sprite(id: UUID, base: UIImage) -> UIImage {
-        if let c = cache[id] { return c }
+        if let c = cache[id], c.base === base { return c.sprite }
         let s = Self.bake(base)
-        cache[id] = s
+        cache[id] = (base, s)
         return s
     }
 
